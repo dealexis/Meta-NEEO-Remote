@@ -226,6 +226,12 @@ module.exports = function controller(driver) {
     }
   };
 
+  this.headers = function (headers, result, deviceId) {
+    console.log(headers)
+    console.log(result)
+    console.log(deviceId)
+  }
+
   this.reInitVariablesValues = function(deviceId) {//it is to make sure that all variable have been interpreted after the register process
     self.vault.variables.forEach(element => {
       element.value = self.vault.readVariables(element.value, deviceId); 
@@ -300,14 +306,20 @@ module.exports = function controller(driver) {
   };
 
   
-  this.commandProcessor = function(command, commandtype, deviceId) { // process any command according to the target protocole
+  this.commandProcessor = function(command, commandtype, deviceId, headers) { // process any command according to the target protocole
+
+    console.log('command processor')
+    console.log('HEADERS' + headers)
+    console.log('command' + command)
+    console.log('commandtype' + commandtype)
+
     return new Promise(function (resolve, reject) {
      
       self.assignProcessor(commandtype);
       const connection = self.getConnection(commandtype);
       command = self.vault.readVariables(command, deviceId);
       command = self.assignTo(RESULT, command, '');
-      const params = {'command' : command, 'connection' : connection};
+      const params = {'command' : command, 'connection' : connection, 'headers' : headers};
       processingManager.process(params)
         .then((result) => {
           resolve(result);
@@ -344,7 +356,10 @@ module.exports = function controller(driver) {
     });    
   };
 
-  this.queryProcessor = function (data, query, commandtype, deviceId) { // process any command according to the target protocole
+  this.queryProcessor = function (data, query, commandtype, deviceId, headers) { // process any command according to the target protocole
+
+    console.log('QUERY PROCESSOR HEADERS:' + headers)
+
     return new Promise(function (resolve, reject) {
       self.assignProcessor(commandtype);
       console.log(deviceId + ' Query Processor : ' + query);
@@ -359,7 +374,7 @@ module.exports = function controller(driver) {
       for (let index = 0; index < myQueryT.length; index++) { //process all the query result in parallele.
         const mypromise = new Promise ((resolve, reject) => {
           myQueryT[index] = self.vault.readVariables(myQueryT[index], deviceId);
-          const params = {'query' : myQueryT[index], 'data' : data};
+          const params = {'query' : myQueryT[index], 'data' : data, 'headers': headers};
           processingManager.query(params).then((data) => {
             resolve(data);
           });
@@ -386,8 +401,14 @@ module.exports = function controller(driver) {
   };
   
   this.onListenExecute = function (result, listener, deviceId) {
-    process.stdout.write('.');  
+
+    process.stdout.write('.');
     self.queryProcessor(result, listener.queryresult, listener.type, deviceId).then((result) => {
+      //result = result[0];
+      //CONVERTING TO FIRST ITEM SHOULD BE IN THE DEVICE AND NOT HARDCODED.
+    /*  if (Array.isArray(result)) {
+        result = result[0];
+      }*/
        if (listener.evalwrite) {self.evalWrite(listener.evalwrite, result, deviceId);}
        if (listener.evaldo) {self.evalDo(listener.evaldo, result, deviceId);}
     });
@@ -408,18 +429,22 @@ module.exports = function controller(driver) {
     });
   };
   
-  this.actionManager = function (deviceId, commandtype, command, queryresult, evaldo, evalwrite) {
+  this.actionManager = function (deviceId, commandtype, command, queryresult, evaldo, evalwrite, headers) {
+
+    console.log('actionManager')
+
     return new Promise(function (resolve, reject) {
       try {
         console.log(command+ ' - ' + commandtype);
-        self.commandProcessor(command, commandtype, deviceId)
+        self.commandProcessor(command, commandtype, deviceId, headers)
         .then((result) => {
-          self.queryProcessor(result, queryresult, commandtype, deviceId).then((result) => {
+          self.queryProcessor(result, queryresult, commandtype, deviceId, headers).then((result) => {
             if (Array.isArray(result)) {
               result = result[0];
             }
             if (evalwrite) {self.evalWrite(evalwrite, result, deviceId);}
             if (evaldo) {self.evalDo(evaldo, result, deviceId);}
+            //if (headers) {self.headers(headers, result, deviceId);}
             resolve(result);
           });
         })
@@ -473,7 +498,7 @@ module.exports = function controller(driver) {
       theButton = theButton.value;
       if (theButton.type != WOL) { //all the cases
         if (theButton.command != undefined){ 
-          self.actionManager(deviceId, theButton.type, theButton.command, theButton.queryresult, theButton.evaldo, theButton.evalwrite)
+          self.actionManager(deviceId, theButton.type, theButton.command, theButton.queryresult, theButton.evaldo, theButton.evalwrite, theButton.headers)
           .then(()=>{
             console.log('Action done.');
           })
