@@ -1,0 +1,49 @@
+{
+  "name": "@jac459/metadriver",
+  "version": "0.8.15",
+  "description": "full customizable driver to control any device with neeo (including list and device monitoring)",
+  "main": "meta.js",
+  "scripts": {
+    "start": "node meta.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jac459/metadriver.git"
+  },
+  "keywords": [
+    "neeo",
+    "meta",
+    "jac"
+  ],
+  "author": "jac459",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jac459/metadriver/issues"
+  },
+  "homepage": "https://github.com/jac459/metadriver#readme",
+  "dependencies": {
+    "async": "^3.2.0",
+    "fs": "0.0.1-security",
+    "got": "^11.5.2",
+    "http.min": "^2.0.1",
+    "json-rpc2": "^2.0.0",
+    "jsonpath-plus": "^4.0.0",
+    "local-devices": "^3.0.0",
+    "lodash": "^4.17.19",
+    "meta": "^2.2.13",
+    "mqtt": "^4.2.0",
+    "neeo-sdk": "^0.53.8",
+    "socket.io-client": "^2.3.0",
+    "wake_on_lan": "^1.0.0",
+    "xml2js": "^0.4.23",
+    "xmldom": "^0.3.0",
+    "xpath": "0.0.27"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "devDependencies": {
+    "eslint": "^7.8.1"
+  }
+}
