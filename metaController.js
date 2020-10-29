@@ -1,6 +1,7 @@
 
 'use strict';
 const path = require('path');
+const chalk = require('chalk');
 const { imageHelper } = require(path.join(__dirname,'imageHelper'));
 const { labelHelper } = require(path.join(__dirname,'labelHelper'));
 const { switchHelper } = require(path.join(__dirname,'switchHelper'));
@@ -22,9 +23,10 @@ const REPL = 'repl';
 const WEBSOCKET = 'webSocket';
 const JSONTCP = 'jsontcp';
 const MQTT = 'mqtt';
+const TCP = 'tcp';
 
 const WOL = 'wol';
-const { ProcessingManager, httpgetProcessor, httprestProcessor, httpgetSoapProcessor, httppostProcessor, cliProcessor, staticProcessor, webSocketProcessor, jsontcpProcessor, mqttProcessor, replProcessor } = require('./ProcessingManager');
+const { ProcessingManager, httpgetProcessor, httprestProcessor, httpgetSoapProcessor, httppostProcessor, cliProcessor, staticProcessor, webSocketProcessor, jsontcpProcessor, mqttProcessor, replProcessor, tcpProcessor } = require('./ProcessingManager');
 
 const processingManager = new ProcessingManager();
 const myHttpgetProcessor = new httpgetProcessor();
@@ -37,6 +39,7 @@ const myJsontcpProcessor = new jsontcpProcessor();
 const myMqttProcessor = new mqttProcessor();
 const myReplProcessor = new replProcessor();
 const myHttprestProcessor = new httprestProcessor();
+const myTcpProcessor = new tcpProcessor();
 
 module.exports = function controller(driver) {
   this.buttons = []; //structure keeping all buttons of the driver
@@ -52,12 +55,12 @@ module.exports = function controller(driver) {
   this.sliderH = []; //slider helper to store all the getter and setter of the dynamically created sliders.
   this.directoryH = []; //directory helper to store all the browse getter and setter of the dynamically created simple directories.
   var self = this;
-   
+
   this.assignDiscoverHubController = function (theHubController) {//Assign the hub in order to send it the notifications
     self.sendComponentUpdate = theHubController.sendComponentUpdate;
     self.connectionH = theHubController.connectionH;
   };
- 
+
   this.addListener = function(params) {
     self.vault.readVariables(params, params.deviceId);
     let listIndent = self.listeners.findIndex((listen) => {return listen.command == params.command});
@@ -70,7 +73,7 @@ module.exports = function controller(driver) {
             pEw.deviceId = params.deviceId; //for dynamic devices, tracking of which variables to write on.
             self.listeners[listIndent].evalwrite.push(pEw);
       });
-      
+
     }
   }
 
@@ -82,7 +85,7 @@ module.exports = function controller(driver) {
     self.buttons.push({'deviceId':deviceId, 'name':name,'value':value});
   };
 
-  this.addImageHelper = function(deviceId, imageName, listened) {//function called by the MetaDriver to store 
+  this.addImageHelper = function(deviceId, imageName, listened) {//function called by the MetaDriver to store
     const indent = self.imageH.findIndex((elt) => {return (elt.name == imageName && elt.deviceId == deviceId);});
     if (indent<0) { //add only if not existant
       const newImageH = new imageHelper(deviceId, imageName, listened, self);
@@ -91,8 +94,8 @@ module.exports = function controller(driver) {
     }
     else {return self.imageH[indent];}
   };
-  
-  this.addLabelHelper = function(deviceId, labelName, listened, actionListened) {//function called by the MetaDriver to store 
+
+  this.addLabelHelper = function(deviceId, labelName, listened, actionListened) {//function called by the MetaDriver to store
     const indent = self.labelH.findIndex((elt) => {return (elt.name == labelName && elt.deviceId == deviceId);});
     if (indent<0) { //add only if not existant
       const newLabelH = new labelHelper(deviceId, labelName, listened, self, actionListened);
@@ -102,7 +105,7 @@ module.exports = function controller(driver) {
    else {return self.labelH[indent];}
   };
 
-  this.addSensorHelper = function(deviceId, sensorName, listened) {//function called by the MetaDriver to store 
+  this.addSensorHelper = function(deviceId, sensorName, listened) {//function called by the MetaDriver to store
     const indent = self.sensorH.findIndex((elt) => {return (elt.name == sensorName && elt.deviceId == deviceId);});
     if (indent<0) { //add only if not existant
       const newSensorH = new sensorHelper(deviceId, sensorName, listened, self);
@@ -113,7 +116,7 @@ module.exports = function controller(driver) {
     else {return self.sensorH[indent];}
   };
 
-  this.addSwitchHelper = function(deviceId, switchName, listen, evaldo) {//function called by the MetaDriver to store 
+  this.addSwitchHelper = function(deviceId, switchName, listen, evaldo) {//function called by the MetaDriver to store
     const indent = self.switchH.findIndex((elt) => {return (elt.name == switchName && elt.deviceId == deviceId);});
     if (indent<0) { //add only if not existant
       const newSwitchH = new switchHelper(deviceId, switchName, listen, evaldo, self);
@@ -123,7 +126,7 @@ module.exports = function controller(driver) {
     else {return self.switchH[indent];}
   };
 
-  this.addSliderHelper = function(deviceId, listen, evaldo, slidername) {//function called by the MetaDriver to store 
+  this.addSliderHelper = function(deviceId, listen, evaldo, slidername) {//function called by the MetaDriver to store
     const indent = self.sliderH.findIndex((elt) => {return (elt.name == slidername && elt.deviceId == deviceId);});
     if (indent<0) { //add only if not existant
       const newSliderH = new sliderHelper(deviceId, listen, evaldo, slidername, self);
@@ -133,7 +136,7 @@ module.exports = function controller(driver) {
     else {return self.sliderH[indent];}
   };
 
-  this.addDirectoryHelper = function(deviceId, dirname) {//function called by the MetaDriver to store the features of the list 
+  this.addDirectoryHelper = function(deviceId, dirname) {//function called by the MetaDriver to store the features of the list
     const indent = self.directoryH.findIndex((elt) => {return (elt.name == dirname && elt.deviceId == deviceId);});
     if (indent<0) { //add only if not existant
       const newDirectoryH = new directoryHelper(deviceId, dirname, self);
@@ -147,21 +150,21 @@ module.exports = function controller(driver) {
     console.log('dynamicallyAssignSubscription');
     //  self.registerInitiationCallback(self.discoverHubController.updateFunction);
     //self.discoverHubController.updateFunction
-    
+
   };
 
    this.registerInitiationCallback = function(deviceId) {//technical function called at device initiation to start some listeners
     console.log('Initialisation process.');
     self.initialise(deviceId);
   };
- 
+
   this.assignTo = function(Pattern, inputChain, givenResult) //Assign a value to the input chain. Pattern found is replaced by given value
   {
    try {
       if (givenResult && !(typeof(givenResult) in {'string':'', 'number':'', 'boolean':''}) ) {//in case the response is a json object, convert to string
         givenResult = JSON.stringify(givenResult);
       }
-     
+
       if (typeof(inputChain) == 'string') {
         if (inputChain.startsWith('DYNAMIK ')) {
           if (givenResult && (typeof(givenResult) == 'string' )) {
@@ -189,17 +192,17 @@ module.exports = function controller(driver) {
     }
   };
 
-  
+
   this.evalWrite = function (evalwrite, result, deviceId) {
     if (evalwrite) { //case we want to write inside a variable
       evalwrite.forEach(evalW => {
         if (evalW.deviceId) {deviceId = evalW.deviceId} //this is specific for listeners and discovery, when one command should be refreshing data of multiple devices (example hue bulbs)
-        
+
         //process the value
         let finalValue = self.vault.readVariables(evalW.value, deviceId);
         console.log(finalValue)
         finalValue = self.assignTo(RESULT, finalValue, result);
-        self.vault.writeVariable(evalW.variable, finalValue, deviceId); 
+        self.vault.writeVariable(evalW.variable, finalValue, deviceId);
       });
     }
   };
@@ -216,7 +219,7 @@ module.exports = function controller(driver) {
            self.onButtonPressed(evalD.then, deviceId);
           }
         }
-        else { 
+        else {
           if (evalD.or && evalD.or != '')
           {
             self.onButtonPressed(evalD.or, deviceId);
@@ -226,21 +229,21 @@ module.exports = function controller(driver) {
     }
   };
 
-  this.headers = function (headers, result, deviceId) {
+  /*this.headers = function (headers, result, deviceId) {
     console.log(headers)
     console.log(result)
     console.log(deviceId)
-  }
+  }*/
 
   this.reInitVariablesValues = function(deviceId) {//it is to make sure that all variable have been interpreted after the register process
     self.vault.variables.forEach(element => {
-      element.value = self.vault.readVariables(element.value, deviceId); 
+      element.value = self.vault.readVariables(element.value, deviceId);
     });
   };
 
   this.reInitConnectionsValues = function(deviceId) {//it is to make sure that all variable have been interpreted after the register process
     self.connectionH.forEach(element => {
-      element.descriptor = self.vault.readVariables(element.descriptor, deviceId); 
+      element.descriptor = self.vault.readVariables(element.descriptor, deviceId);
      });
   };
 
@@ -249,15 +252,18 @@ module.exports = function controller(driver) {
   };
 
   this.assignProcessor = function(commandtype) {
+
+    console.log(chalk.white.bgBlue.bold(' assignProcessor COMMAND TYPE ') + ' ' + commandtype);
+
     if (commandtype == HTTPGET) {
       processingManager.processor = myHttpgetProcessor;
-    } 
+    }
     else if (commandtype == HTTPREST) {
       processingManager.processor = myHttprestProcessor;
-    } 
+    }
     else if (commandtype == HTTPGETSOAP) {
       processingManager.processor = myHttpgetSoapProcessor;
-    } 
+    }
     else if (commandtype == HTTPPOST) {
       processingManager.processor = myHttppostProcessor;
     }
@@ -279,6 +285,9 @@ module.exports = function controller(driver) {
     else if (commandtype == REPL) {
       processingManager.processor = myReplProcessor;
     }
+    else if (commandtype == TCP) {
+      processingManager.processor = myTcpProcessor;
+    }
     else {console.log('Error in meta settings: The commandtype to process is not defined: ' + commandtype);}
   };
 
@@ -290,7 +299,7 @@ module.exports = function controller(driver) {
           resolve(result);
         })
         .catch((err) => {console.log('Error during initiation with commandtype : ' + commandtype);console.log(err);reject (err);});
-    });    
+    });
   };
 
   this.wrapUpProcessor = function(commandtype) { // close communication protocoles
@@ -302,30 +311,41 @@ module.exports = function controller(driver) {
           resolve(result);
         })
         .catch((err) => {reject (err);});
-    });    
+    });
   };
 
-  
-  this.commandProcessor = function(command, commandtype, deviceId, headers) { // process any command according to the target protocole
 
-    console.log('command processor')
-    console.log('HEADERS' + headers)
-    console.log('command' + command)
-    console.log('commandtype' + commandtype)
+  this.commandProcessor = function(command, commandtype, deviceId, headers, ip, port) { // process any command according to the target protocole
+
+    console.log(chalk.white.bgBlue.bold(' COMMAND PROCESSOR '))
+    console.log('=================')
+    console.log(chalk.green('HEADERS:') + headers)
+    console.log(chalk.green('COMMAND:') + command)
+    console.log(chalk.green('COMMAND_TYPE:') + commandtype)
+    console.log(chalk.green('IP:') + ip)
+    console.log(chalk.green('PORT:') + port)
 
     return new Promise(function (resolve, reject) {
-     
+
       self.assignProcessor(commandtype);
       const connection = self.getConnection(commandtype);
       command = self.vault.readVariables(command, deviceId);
       command = self.assignTo(RESULT, command, '');
-      const params = {'command' : command, 'connection' : connection, 'headers' : headers};
+      //const params = {'command' : command, 'connection' : connection, 'headers' : headers};
+      const params = {
+        command,
+        connection,
+        headers,
+        ip,
+        port
+      };
+
       processingManager.process(params)
         .then((result) => {
           resolve(result);
         })
         .catch((err) => {reject (err);});
-    });    
+    });
   };
 
   this.listenProcessor = function(command, commandtype, listener, deviceId) { // process any command according to the target protocole
@@ -333,7 +353,7 @@ module.exports = function controller(driver) {
 
       self.assignProcessor(commandtype);
       const connection = self.getConnection(commandtype);
-      
+
       command = self.vault.readVariables(command, deviceId);
       const params = {'command' : command, 'listener' : listener, '_listenCallback' : self.onListenExecute, 'connection' : connection};
       processingManager.startListen(params, deviceId)
@@ -341,7 +361,7 @@ module.exports = function controller(driver) {
            resolve(result);
         })
         .catch((err) => {reject (err);});
-    });    
+    });
   };
 
   this.stopListenProcessor = function(listener, deviceId) { // process any command according to the target protocole
@@ -353,12 +373,13 @@ module.exports = function controller(driver) {
       else {
         console.log('Meta Warning: Trying to stop a listener from the wrong device');
       }
-    });    
+    });
   };
 
-  this.queryProcessor = function (data, query, commandtype, deviceId, headers) { // process any command according to the target protocole
+  this.queryProcessor = function (data, query, commandtype, deviceId) { // process any command according to the target protocole
+  //this.queryProcessor = function (data, query, commandtype, deviceId, headers) { // process any command according to the target protocole
 
-    console.log('QUERY PROCESSOR HEADERS:' + headers)
+    console.log(chalk.white.bgBlue(' QUERY PROCESSOR '));
 
     return new Promise(function (resolve, reject) {
       self.assignProcessor(commandtype);
@@ -374,7 +395,8 @@ module.exports = function controller(driver) {
       for (let index = 0; index < myQueryT.length; index++) { //process all the query result in parallele.
         const mypromise = new Promise ((resolve, reject) => {
           myQueryT[index] = self.vault.readVariables(myQueryT[index], deviceId);
-          const params = {'query' : myQueryT[index], 'data' : data, 'headers': headers};
+          const params = {'query' : myQueryT[index], 'data' : data};
+          //const params = {'query' : myQueryT[index], 'data' : data, 'headers': headers};
           processingManager.query(params).then((data) => {
             resolve(data);
           });
@@ -399,7 +421,7 @@ module.exports = function controller(driver) {
     });
     });
   };
-  
+
   this.onListenExecute = function (result, listener, deviceId) {
 
     process.stdout.write('.');
@@ -424,21 +446,22 @@ module.exports = function controller(driver) {
         else {
           console.log('Meta warning: trying to start a listener which is not from the right device.');
         }
-      } 
+      }
       catch (err) {reject('Error when starting to listen. ' + err);}
     });
   };
-  
-  this.actionManager = function (deviceId, commandtype, command, queryresult, evaldo, evalwrite, headers) {
 
-    console.log('actionManager')
+  this.actionManager = function (deviceId, commandtype, command, queryresult, evaldo, evalwrite, headers, ip, port) {
+
+    console.log(chalk.white.bgBlue(' METHOD: actionManager '))
 
     return new Promise(function (resolve, reject) {
       try {
         console.log(command+ ' - ' + commandtype);
-        self.commandProcessor(command, commandtype, deviceId, headers)
+        self.commandProcessor(command, commandtype, deviceId, headers, ip, port)
         .then((result) => {
-          self.queryProcessor(result, queryresult, commandtype, deviceId, headers).then((result) => {
+          self.queryProcessor(result, queryresult, commandtype, deviceId).then((result) => {
+          //self.queryProcessor(result, queryresult, commandtype, deviceId, headers).then((result) => {
             if (Array.isArray(result)) {
               result = result[0];
             }
@@ -453,7 +476,7 @@ module.exports = function controller(driver) {
           if (evalwrite) {self.evalWrite(evalwrite, result, deviceId);}
           if (evaldo) {self.evalDo(evaldo, result, deviceId);}
           resolve('Error during the post command processing' + result);
-        }); 
+        });
       }
       catch {reject('Error while processing the command.');}
     });
@@ -469,15 +492,18 @@ module.exports = function controller(driver) {
     self.connectionH.forEach(connection => {//open all driver connections type
       self.initiateProcessor(connection.name, deviceId);
     });
-    
+
     self.listeners.forEach(listener => {
       if (listener.deviceId == deviceId) {//we start only the listeners of this device !!!
         self.listenStart(listener, deviceId);
       }
     });
   };
-  
+
   this.onButtonPressed = function(name, deviceId) {
+
+    console.log(chalk.white.bgBlue(' METHOD: onButtonPressed '));
+
     console.log('[CONTROLLER]' + name + ' button pressed for device ' + deviceId);
     if (name == 'INITIALISE') {//Device resources and connection management.
       self.initialise(deviceId);
@@ -497,18 +523,16 @@ module.exports = function controller(driver) {
     if (theButton != undefined) {
       theButton = theButton.value;
       if (theButton.type != WOL) { //all the cases
-        if (theButton.command != undefined){ 
-          self.actionManager(deviceId, theButton.type, theButton.command, theButton.queryresult, theButton.evaldo, theButton.evalwrite, theButton.headers)
+        if (theButton.command != undefined){
+          self.actionManager(deviceId, theButton.type, theButton.command, theButton.queryresult, theButton.evaldo, theButton.evalwrite, theButton.headers, theButton.ip, theButton.port)
           .then(()=>{
-            console.log('Action done.');
+            console.log('============  ' + chalk.white.bgGreen('ACTION DONE') + '  ============');
           })
-          .catch((err) => { 
+          .catch((err) => {
               console.log('Error when processing the command : ' + err);
            });
         }
       }
-
-
 
       else if (theButton.type == 'wol') {
         console.log(theButton.command);

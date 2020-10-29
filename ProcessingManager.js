@@ -9,6 +9,8 @@ const {parserXMLString, xmldom} = require("./metaController");
 const mqtt = require('mqtt');
 const got = require('got');
 const {resolveCname} = require("dns");
+const net = require('net');
+const chalk = require('chalk');
 
 //STRATEGY FOR THE COMMAND TO BE USED (HTTPGET, post, websocket, ...) New processor to be added here. This strategy mix both transport and data format (json, soap, ...)
 class ProcessingManager {
@@ -37,22 +39,25 @@ class ProcessingManager {
     process(params) {
         return new Promise((resolve, reject) => {
 
-            console.log('params:' + params + ' length:' + params.length)
+            console.log('-------------------------')
 
+            console.log(chalk.white.bgBlue(" CLASS: ProcessingManager "))
+            console.log("METHOD: process")
+            console.log(chalk.white.bgBlue(' PARAMS '))
             for(var f in params){
-                console.log(f  + ' ' + typeof params[f])
-                console.log(params[f])
+                console.log(f  + ':' + typeof params[f])
+                console.log('VALUE:' + params[f])
             }
 
-            //console.log(this._processor)
+            console.log('THIS PROCESSOR: ' + this._processor.constructor.name);
 
             this._processor.process(params)
                 .then((result) => {
-                    console.log('result:' + result);
+                    console.log('RESULT:' + result);
                     resolve(result);
                 })
                 .catch((err) => {
-                    console.log('err' + err)
+                    console.log('ERROR OCCURRED:' + err)
                     reject(err);
                 });
         });
@@ -737,3 +742,100 @@ class mqttProcessor {
 }
 
 exports.mqttProcessor = mqttProcessor;
+
+function stringToHex(text) {
+    var bytes = [];
+
+    for (var i = 0; i < text.length; i++) {
+        var realBytes = unescape(encodeURIComponent(text[i]));
+        for (var j = 0; j < realBytes.length; j++) {
+            bytes.push(realBytes[j].charCodeAt(0));
+        }
+    }
+
+    var converted = [];
+    for (var i = 0; i < bytes.length; i++) {
+        var byte = bytes[i].toString(16);
+        byte = "0x" + byte;
+        converted.push(byte);
+    }
+
+    return converted.join(', ');
+}
+
+class tcpProcessor {
+    constructor() {
+    }
+
+    initiate(connection) {
+        return new Promise(function (resolve, reject) {
+            resolve();
+        });
+    }
+
+    process(params) {
+        return new Promise(function (resolve, reject) {
+
+            console.log('============ CLASS: '+ chalk.white.bgBlue(' tcpProcessor ') +'==============')
+
+            for(var f in params){
+                console.log(chalk.green(f)  + ' : ' + typeof params[f])
+                console.log(params[f])
+            }
+
+            if(!params.port && !params.host) reject();
+
+            const client = new net.Socket();
+            client.connect({
+                host: params.ip,
+                port: parseInt(params.port),
+            }, function () {
+
+                console.log(chalk.green.bold('SEND COMMAND:') + params.command);
+                console.log(chalk.green.bold('IP') + params.ip);
+                console.log(chalk.green.bold('Port:') + params.port);
+
+                //client.write(new Uint8Array([0x73, 0x65, 0x6e, 0x64, 0x69, 0x72, 0x2c, 0x31, 0x3a, 0x32, 0x2c, 0x34, 0x2c, 0x33, 0x38, 0x30, 0x30, 0x30, 0x2c, 0x31, 0x2c, 0x31, 0x2c, 0x33, 0x34, 0x32, 0x2c, 0x31, 0x37, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x36, 0x32, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x32, 0x30, 0x2c, 0x32, 0x32, 0x2c, 0x37, 0x36, 0x30, 0x0d]) );
+                var cmd = stringToHex(params.command).split(', ');
+                cmd.push(0x0d);
+
+                client.write(new Uint8Array(cmd));
+
+                resolve();
+
+            });
+
+            client.on('data', function (chunk) {
+                console.log(chalk.red('Data received: ' + chunk));
+                client.end();
+            });
+
+            client.on('end', function () {
+                console.log(chalk.red('END'));
+            });
+
+        });
+    }
+
+    query(params) {
+        return new Promise(function (resolve, reject) {
+            if (params.query) {
+                try {
+                    if (typeof (params.data) == 'string') {
+                        params.data = JSON.parse(params.data);
+                    }
+
+                    resolve(JSONPath(params.query, params.data));
+                } catch (err) {
+                    console.log('error ' + err + ' in JSONPATH ' + params.query + ' processing of :');
+                    console.log(params.data);
+                }
+            } else {
+                resolve(params.data);
+            }
+        });
+    }
+
+}
+
+exports.tcpProcessor = tcpProcessor;
